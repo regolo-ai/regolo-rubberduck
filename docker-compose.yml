@@ -1,0 +1,9 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - REGOLO_API_BASE=${REGOLO_API_BASE}
+    restart: unless-stopped

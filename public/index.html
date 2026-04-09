@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Regolo Multi-Model Rubberduck</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.mjs"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header Section -->
+    <header class="header">
+      <h1>Regolo Multi-Model Rubberduck</h1>
+      <div class="api-key-section">
+        <label for="api-key" class="sr-only">API Key</label>
+        <input 
+          type="password" 
+          id="api-key" 
+          placeholder="Enter API Key"
+          aria-label="API Key"
+        >
+        <button id="save-api-key" class="btn btn-secondary">Save</button>
+      </div>
+    </header>
+
+    <!-- Rate Limit Indicator -->
+    <div id="rate-limit" class="rate-limit" aria-live="polite">
+      Remaining requests: --
+    </div>
+
+    <!-- Model Filter Section -->
+    <section class="model-filter">
+      <label for="model-type">Model type:</label>
+      <select id="model-type" name="model-type">
+        <option value="chat" selected>Chat</option>
+        <option value="completion">Completion</option>
+        <option value="embedding">Embedding</option>
+      </select>
+    </section>
+
+    <!-- Model Selection Section -->
+    <section class="model-selection">
+      <h2>Select models</h2>
+      <div id="models-container" class="models-container">
+        <!-- Checkboxes will be populated dynamically by JavaScript -->
+      </div>
+    </section>
+
+    <!-- Input Section -->
+    <section class="input-section">
+      <label for="question" class="sr-only">Your question</label>
+      <textarea 
+        id="question" 
+        placeholder="Enter your question here..."
+        rows="5"
+        aria-label="Your question"
+      ></textarea>
+      <button id="send-button" class="btn btn-primary">Send</button>
+    </section>
+
+    <!-- Loading Indicator (hidden by default) -->
+    <div id="loading" class="loading" aria-live="polite" hidden>
+      <div class="spinner"></div>
+      <p>Processing...</p>
+    </div>
+
+    <!-- Error Message Container (hidden by default) -->
+    <div id="error-container" class="error-container" role="alert" hidden>
+      <p id="error-message"></p>
+    </div>
+
+    <!-- Results Section -->
+    <section id="results" class="results" aria-label="Results">
+      <h2>Results</h2>
+      <div id="results-grid" class="results-grid">
+        <!-- Results will be displayed dynamically by JavaScript -->
+      </div>
+    </section>
+  </div>
+</body>
+</html>
