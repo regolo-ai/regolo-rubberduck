@@ -1,0 +1,78 @@
+name: Docker Build and Push
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Normalize registry and image path
+        id: image
+        run: |
+          REGISTRY="${{ secrets.DOCKER_REGISTRY }}"
+          REGISTRY="${REGISTRY#http://}"
+          REGISTRY="${REGISTRY#https://}"
+          REGISTRY="${REGISTRY%/}"
+
+          IMAGE="${{ secrets.DOCKER_IMAGE_NAME }}"
+          IMAGE="${IMAGE#/}"
+          IMAGE_LOWER=$(echo "${IMAGE}" | tr '[:upper:]' '[:lower:]')
+
+          if [[ "${IMAGE_LOWER}" != */* ]]; then
+            IMAGE_PATH="regolo/${IMAGE_LOWER}"
+          else
+            IMAGE_PATH="${IMAGE_LOWER}"
+          fi
+
+          echo "registry=${REGISTRY}"     >> $GITHUB_OUTPUT
+          echo "image_path=${IMAGE_PATH}" >> $GITHUB_OUTPUT
+
+      - name: Resolve tags to push
+        id: vars
+        run: |
+          IMAGE_REF="${{ steps.image.outputs.registry }}/${{ steps.image.outputs.image_path }}"
+
+          TAGS="${IMAGE_REF}:dev"
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            NUM_TAG="${GITHUB_REF##*/}"
+            NUM_TAG="${NUM_TAG#v}"
+            TAGS="${TAGS},${IMAGE_REF}:latest,${IMAGE_REF}:${NUM_TAG}"
+            echo "is_tag=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_tag=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "tags=${TAGS}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
