@@ -16,6 +16,7 @@ const errorMessage = document.getElementById('error-message');
 const resultsGrid = document.getElementById('results-grid');
 const resultsTitle = document.getElementById('results-title');
 const resultsHeader = document.getElementById('results-header');
+const resultsSection = document.getElementById('results');
 const rateLimitDiv = document.getElementById('rate-limit');
 
 /**
@@ -66,25 +67,38 @@ function loadApiKey() {
 
 /**
  * Fetch models from the API
- * @param {string} apiKey - API key for authorization
+ * @param {string} apiKey - API key for authorization (optional, endpoint is public)
  * @returns {Promise<Array>} - Array of model objects
  */
 async function fetchModels(apiKey) {
+  const headers = {
+    'Content-Type': 'application/json'
+  };
+  
+  // Add Authorization header only if API key is provided
+  if (apiKey) {
+    headers['Authorization'] = `Bearer ${apiKey}`;
+  }
+  
   const response = await fetch('/api/models', {
     method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json'
-    }
+    headers: headers
   });
-
-  updateRateLimitDisplay(response);
-
+  
+  // Update rate limit display from response headers
+  if (rateLimitDiv) {
+    const remaining = response.headers.get('X-RateLimit-Remaining');
+    const limit = response.headers.get('X-RateLimit-Limit') || 30;
+    if (remaining !== null) {
+      rateLimitDiv.textContent = `Remaining requests: ${remaining}/${limit}`;
+    }
+  }
+  
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
     throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
   }
-
+  
   const data = await response.json();
   return data.models || [];
 }
@@ -272,22 +286,20 @@ function initEventListeners() {
 async function init() {
   initEventListeners();
   
+  // Always load models on startup (endpoint is public)
+  try {
+    const models = await fetchModels(); // No API key required
+    const modeFilter = modelTypeSelect.value;
+    renderModels(models, modeFilter);
+  } catch (error) {
+    console.error('Failed to load models:', error);
+  }
+  
   // Load API key from localStorage if available
   const savedApiKey = loadApiKey();
   
   if (savedApiKey) {
     apiKeyInput.value = savedApiKey;
-    
-    try {
-      const models = await fetchModels(savedApiKey);
-      const modeFilter = modelTypeSelect.value;
-      renderModels(models, modeFilter);
-    } catch (error) {
-      // API key might be invalid, clear it
-      saveApiKey('');
-      apiKeyInput.value = '';
-      showError('Saved API key is no longer valid. Please enter a new key.');
-    }
   }
 }
 
@@ -445,11 +457,16 @@ function renderResults(results) {
     resultsTitle.classList.remove('hidden');
     resultsHeader.classList.remove('hidden');
     resultsGrid.removeAttribute('hidden');
+    resultsHeader.parentElement.classList.remove('hidden');
   } else {
     resultsTitle.classList.add('hidden');
     resultsHeader.classList.add('hidden');
     resultsGrid.setAttribute('hidden', '');
+    resultsHeader.parentElement.classList.add('hidden');
   }
+  
+  // Clear grid before rendering new results
+  resultsGrid.innerHTML = '';
   
   let firstTokenTime = null;
   let totalTime = 0;

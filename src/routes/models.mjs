@@ -9,6 +9,8 @@ export async function getModelsHandler(req, res) {
   // No authorization required - public endpoint
   
   try {
+    const startTime = Date.now();
+    
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
