@@ -3,34 +3,27 @@ const REQUEST_TIMEOUT = 10000; // 10 seconds
 
 /**
  * GET /api/models handler
- * Proxies request to Regolo API with authorization
+ * Returns list of available models from Regolo API (public, no auth required)
  */
 export async function getModelsHandler(req, res) {
-  // Extract Authorization header
-  const authHeader = req.headers.authorization;
-
-  // Validate API key present (Bearer token required)
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Missing or invalid Authorization header' });
-  }
-
+  // No authorization required - public endpoint
+  
   try {
     // Create abort controller for timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
 
-    // Forward request to Regolo API
+    // Forward request to Regolo API (without Authorization header)
     const response = await fetch(REGOLO_API_URL, {
       method: 'GET',
       headers: {
-        'Authorization': authHeader,
         'Content-Type': 'application/json'
       },
       signal: controller.signal
     });
 
     clearTimeout(timeoutId);
-
+    
     // Handle Regolo API errors
     if (response.status === 401) {
       return res.status(401).json({ error: 'Invalid API key' });
