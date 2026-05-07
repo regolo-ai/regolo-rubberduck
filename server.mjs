@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { rateLimitMiddleware } from './src/rateLimit.mjs';
+
 import chatRouter from './src/routes/chat.mjs';
 import { getModelsHandler } from './src/routes/models.mjs';
 
@@ -21,10 +21,7 @@ app.use(express.static('public'));
 // JSON body parser
 app.use(express.json());
 
-// Apply rate limiting to all /api routes
-app.use('/api', rateLimitMiddleware);
-
-// Chat endpoint - parallel queries to multiple Regolo models
+// Chat endpoint - parallel queries to multiple models
 app.use('/api', chatRouter);
 
 // Models endpoint - proxies to Regolo API

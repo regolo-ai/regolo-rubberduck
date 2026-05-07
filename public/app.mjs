@@ -1,5 +1,5 @@
 /**
- * Regolo Multi-Model Rubberduck - Frontend JavaScript
+ * Hydra Multi-Model Rubberduck - Frontend JavaScript
  * Handles API key persistence, model fetching, filtering, and selection
  */
 
@@ -14,6 +14,8 @@ const loadingIndicator = document.getElementById('loading');
 const errorContainer = document.getElementById('error-container');
 const errorMessage = document.getElementById('error-message');
 const resultsGrid = document.getElementById('results-grid');
+const resultsTitle = document.getElementById('results-title');
+const resultsHeader = document.getElementById('results-header');
 const rateLimitDiv = document.getElementById('rate-limit');
 
 /**
@@ -336,63 +338,7 @@ function hideLoading() {
   }
 }
 
-/**
- * Render results to the results grid
- * @param {Array} results - Array of result objects from API
- */
-function renderResults(results) {
-  if (!resultsGrid) return;
-  
-  resultsGrid.innerHTML = '';
-  
-  results.forEach(result => {
-    const card = document.createElement('div');
-    card.className = 'result-card';
-    
-    const modelName = escapeHtml(result.model || 'Unknown Model');
-    const hasError = result.error && result.error.length > 0;
-    
-    // Build card content
-    let contentHtml = '';
-    
-    if (hasError) {
-      // Show error state
-      contentHtml = `
-        <div class="result-error">
-          <span class="error-icon">⚠️</span>
-          <p>${escapeHtml(result.error)}</p>
-        </div>
-      `;
-    } else {
-      // Show response
-      contentHtml = `
-        <div class="result-response">
-          <div class="result-text">${escapeHtml(result.response)}</div>
-        </div>
-      `;
-    }
-    
-    // Format duration
-    const duration = result.duration_ms ? (result.duration_ms / 1000).toFixed(2) : '0.00';
-    
-    // Build tokens info
-    const tokens = result.tokens || {};
-    const promptTokens = tokens.prompt || 0;
-    const completionTokens = tokens.completion || 0;
-    const totalTokens = tokens.total || 0;
-    
-    card.innerHTML = `
-      <h3 class="model-name">${modelName}</h3>
-      ${contentHtml}
-      <div class="result-meta">
-        <span class="tokens">Token: ${totalTokens} (prompt: ${promptTokens}, completion: ${completionTokens})</span>
-        <span class="duration">Duration: ${duration}s</span>
-      </div>
-    `;
-    
-    resultsGrid.appendChild(card);
-  });
-}
+
 
 /**
  * Send query to the API
@@ -483,6 +429,79 @@ async function sendQuery() {
   }
 }
 
+// Render results to the results grid
+function renderResults(results) {
+  if (!resultsGrid) return;
+  
+  const resultsTitle = document.getElementById('results-title');
+  const resultsHeader = document.getElementById('results-header');
+  
+  if (!resultsHeader || !resultsTitle) {
+    return;
+  }
+  
+  // Show title and header when results are present
+  if (results.length > 0) {
+    resultsTitle.classList.remove('hidden');
+    resultsHeader.classList.remove('hidden');
+    resultsGrid.removeAttribute('hidden');
+  } else {
+    resultsTitle.classList.add('hidden');
+    resultsHeader.classList.add('hidden');
+    resultsGrid.setAttribute('hidden', '');
+  }
+  
+  let firstTokenTime = null;
+  let totalTime = 0;
+  
+  results.forEach(result => {
+    const card = document.createElement('div');
+    card.className = 'result-card';
+    
+    const modelName = escapeHtml(result.model || 'Unknown Model');
+    const hasError = result.error && result.error.length > 0;
+    
+    let contentHtml = '';
+    
+    if (hasError) {
+      contentHtml = `
+        <div class="result-error">
+          <span class="error-icon">⚠️</span>
+          <p>${escapeHtml(result.error)}</p>
+        </div>
+      `;
+    } else {
+      // Remove leading/trailing newlines from response
+      const cleanedResponse = result.response.replace(/^\s+|\s+$/g, '');
+      contentHtml = `
+        <div class="result-response">
+          <div class="result-text">${escapeHtml(cleanedResponse)}</div>
+        </div>
+      `;
+    }
+    
+    if (result.time_to_first_token !== undefined) {
+      firstTokenTime = `${result.time_to_first_token}ms`;
+      totalTime = result.duration_ms ? (result.duration_ms / 1000).toFixed(2) : '0.00';
+    }
+    
+    const tokens = result.tokens || {};
+    const promptTokens = tokens.prompt || 0;
+    const completionTokens = tokens.completion || 0;
+    const totalTokens = tokens.total || 0;
+    
+    card.innerHTML = `
+      <h3 class="model-name">${modelName}</h3>
+      ${contentHtml}
+      <div class="result-meta">
+        <span class="tokens">Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}</span>
+        <span class="duration">Duration: ${totalTime}s ${firstTokenTime ? `| TTFT: ${firstTokenTime}` : ''}</span>
+      </div>
+    `;
+    
+    resultsGrid.appendChild(card);
+  });
+}
 // Export functions for testing (if needed)
 export {
   fetchModels,
@@ -496,6 +515,5 @@ export {
   escapeHtml,
   showLoading,
   hideLoading,
-  renderResults,
   sendQuery
 };

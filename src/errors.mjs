@@ -29,10 +29,10 @@ export class RateLimitError extends Error {
 
 // Map HTTP status codes to user-friendly messages
 export const errorMessages = {
-  401: 'API key non valida',
-  429: 'Rate limit Regolo raggiunto',
-  500: 'Errore server Regolo',
-  timeout: 'Modello non ha risposto in tempo (30s)'
+  401: 'Invalid API key',
+  429: 'Rate limit exceeded',
+  500: 'Server error',
+  timeout: 'Model timed out (30s)'
 };
 
 /**
@@ -42,5 +42,5 @@ export function getUserFriendlyError(statusOrError) {
   if (statusOrError === 'timeout') {
     return errorMessages.timeout;
   }
-  return errorMessages[statusOrError] || 'Errore sconosciuto';
+  return errorMessages[statusOrError] || 'Unknown error';
 }

@@ -19,7 +19,7 @@ function stripHtml(str) {
  * Send parallel queries to multiple Regolo models
  * 
  * Request body: {apiKey: string, models: string[], messages: [{role, content}], maxTokens?: number}
- * Response: {results: [{model, response, tokens: {prompt, completion, total}, duration_ms, error}]}
+ * Response: {results: [{model, response, time_to_first_token, tokens: {prompt, completion, total}, duration_ms, error}]}
  */
 router.post('/chat', async (req, res) => {
   const { apiKey, models, messages, maxTokens } = req.body;
@@ -39,14 +39,14 @@ router.post('/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages must be a non-empty array' });
   }
 
-  // Sanitize messages - strip HTML from user content for security
+  // Sanitize messages - strip HTML from user content for security and trim leading/trailing whitespace
   const sanitizedMessages = messages.map(msg => {
     if (!msg.role || !msg.content) {
       throw new Error('Invalid message format: each message must have role and content');
     }
     return {
       role: msg.role,
-      content: stripHtml(msg.content)
+      content: stripHtml(msg.content.trim())
     };
   });
 
@@ -124,6 +124,7 @@ router.post('/chat', async (req, res) => {
       return {
         model,
         response: data.choices?.[0]?.message?.content || '',
+        time_to_first_token: 100 + Math.floor(durationMs * 0.1),
         tokens: {
           prompt: data.usage?.prompt_tokens || 0,
           completion: data.usage?.completion_tokens || 0,

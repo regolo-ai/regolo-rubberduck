@@ -1,6 +1,7 @@
-# Regolo Multi-Model Rubberduck
+# Hydra Multi-Model Test
+[![License](https://img.shields.io/badge/License-MIT%20v1-blue.svg)](https://spdx.org/licenses/MIT.html#licenseText)   
 
-Standalone web application to compare responses from multiple Regolo.ai LLMs to the same question in a single, simple interface.
+Standalone web application to compare responses from multiple Hydra.ai LLMs to the same question in a single, simple interface.
 
 **Fork of**: [mcp-rubber-duck](https://github.com/nesquikm/mcp-rubber-duck) - Original MCP Rubber Duck project
 
@@ -67,7 +68,7 @@ npm run dev
 
 ## Usage
 
-1. **Get API Key**: Visit https://regolo.ai and register to get your API key
+1. **Get API Key**: Visit https://hydra.ai and register to get your API key
 2. **Open the app**: Navigate to http://localhost:3000 in your browser
 3. **Enter API Key**: Type your key in the top-right field and click "Salva"
 4. **Select Models**: Choose which models to query (up to 10)
@@ -92,31 +93,11 @@ RATE_LIMIT_WINDOW_MS=3600000
 | `RATE_LIMIT_MAX` | 30 | Max requests per IP per window |
 | `RATE_LIMIT_WINDOW_MS` | 3600000 | Rate limit window in ms (1 hour) |
 
-## Project Structure
-
-```
-├── server.mjs              # Express server with API proxy & rate limiting
-├── src/
-│   ├── routes/
-│   │   ├── models.mjs      # /api/models endpoint
-│   │   └── chat.mjs        # /api/chat endpoint
-│   ├── errors.mjs          # Custom error classes
-│   └── rateLimit.mjs       # Rate limiting middleware
-├── public/
-│   ├── index.html          # Main HTML
-│   ├── style.css           # CSS styling
-│   └── app.mjs             # Frontend JavaScript
-├── Dockerfile              # Docker image definition
-├── docker-compose.yml      # Docker Compose configuration
-├── .dockerignore           # Docker ignore patterns
-└── README.md               # This file
-```
-
 ## API Endpoints
 
 ### GET /api/models
 
-Fetches the list of available models from Regolo.ai.
+Fetches the list of available models from Hydra.ai.
 
 **Headers:**
 - `Authorization: Bearer <your-api-key>`
@@ -212,4 +193,3 @@ MIT
 ## Credits
 
 - **Original Project**: [mcp-rubber-duck](https://github.com/nesquikm/mcp-rubber-duck) by nesquikm
-- **AI Provider**: [Regolo.ai](https://regolo.ai)
