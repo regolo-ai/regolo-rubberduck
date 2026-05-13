@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hydra Multi-Model Test</title>
+  <link rel="icon" href="https://regolo.ai/wp-content/uploads/2025/11/regolo-icon.png" type="image/png">
   <link rel="stylesheet" href="style.css">
   <script type="module" src="app.mjs"></script>
 </head>
@@ -40,7 +41,7 @@
 
     <!-- Model Selection Section -->
     <section class="model-selection">
-      <h2>Select models</h2>
+      <h2>Select models (all with reasoning disabled)</h2>
       <div id="models-container" class="models-container">
         <!-- Checkboxes will be populated dynamically by JavaScript -->
       </div>
@@ -55,6 +56,10 @@
         rows="5"
         aria-label="Your question"
       ></textarea>
+      <div id="url-indicator" class="url-indicator" hidden>
+        <span class="url-icon">🔗</span>
+        <span class="url-text">Paste  a single link in your prompt and it'll be automatically converted to Markdown and shared in the various model requests.</span>
+      </div>
       <button id="send-button" class="btn btn-primary">Send</button>
     </section>
 

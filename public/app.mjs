@@ -3,6 +3,8 @@
  * Handles API key persistence, model fetching, filtering, and selection
  */
 
+import { marked } from 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+
 // DOM Elements
 const apiKeyInput = document.getElementById('api-key');
 const saveApiKeyBtn = document.getElementById('save-api-key');
@@ -113,6 +115,10 @@ function filterModels(models, modeFilter) {
   if (!modeFilter || modeFilter === 'all') {
     return models;
   }
+  // Ensure models is an array
+  if (!Array.isArray(models)) {
+    return [];
+  }
   return models.filter(model => model.mode === modeFilter);
 }
 
@@ -126,7 +132,7 @@ function renderModels(models, modeFilter) {
   
   const filteredModels = filterModels(models, modeFilter);
   
-  // Clear existing checkboxes (except we'll rebuild from scratch)
+  // Clear existing checkboxes
   modelsContainer.innerHTML = '';
   
   // Create Select All checkbox
@@ -201,116 +207,6 @@ function renderModels(models, modeFilter) {
 }
 
 /**
- * Handle save API key button click
- */
-async function handleSaveApiKey() {
-  const apiKey = apiKeyInput.value.trim();
-  
-  if (!apiKey) {
-    showError('Please enter a valid API key.');
-    return;
-  }
-  
-  hideError();
-  
-  try {
-    saveApiKey(apiKey);
-    const models = await fetchModels(apiKey);
-    const modeFilter = modelTypeSelect.value;
-    renderModels(models, modeFilter);
-  } catch (error) {
-    showError(`Error: ${error.message}`);
-    // Clear the API key if it's invalid
-    saveApiKey('');
-    apiKeyInput.value = '';
-  }
-}
-
-/**
- * Handle model filter dropdown change
- */
-async function handleFilterChange() {
-  const apiKey = loadApiKey();
-  
-  if (!apiKey) {
-    showError('Please enter an API key to view models.');
-    return;
-  }
-  
-  hideError();
-  
-  try {
-    const models = await fetchModels(apiKey);
-    const modeFilter = modelTypeSelect.value;
-    renderModels(models, modeFilter);
-  } catch (error) {
-    showError(`Error loading models: ${error.message}`);
-  }
-}
-
-/**
- * Initialize event listeners
- */
-function initEventListeners() {
-  // Save API key button
-  saveApiKeyBtn.addEventListener('click', handleSaveApiKey);
-  
-  // Allow Enter key in API key input
-  apiKeyInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-      handleSaveApiKey();
-    }
-  });
-  
-  // Model filter dropdown
-  modelTypeSelect.addEventListener('change', handleFilterChange);
-  
-  // Question textarea - handle Ctrl+Enter to send
-  if (questionTextarea) {
-    questionTextarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && e.ctrlKey) {
-        sendQuery();
-      }
-    });
-  }
-  
-  // Send button
-  if (sendButton) {
-    sendButton.addEventListener('click', sendQuery);
-  }
-}
-
-/**
- * Initialize app on page load
- */
-async function init() {
-  initEventListeners();
-  
-  // Always load models on startup (endpoint is public)
-  try {
-    const models = await fetchModels(); // No API key required
-    const modeFilter = modelTypeSelect.value;
-    renderModels(models, modeFilter);
-  } catch (error) {
-    console.error('Failed to load models:', error);
-  }
-  
-  // Load API key from localStorage if available
-  const savedApiKey = loadApiKey();
-  
-  if (savedApiKey) {
-    apiKeyInput.value = savedApiKey;
-  }
-}
-
-// Initialize when DOM is ready
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
-
-/**
  * Get selected models from checkboxes
  * @returns {string[]} - Array of selected model IDs
  */
@@ -350,8 +246,6 @@ function hideLoading() {
   }
 }
 
-
-
 /**
  * Send query to the API
  * Collects API key, selected models, and question, then POSTs to /api/chat
@@ -372,12 +266,12 @@ async function sendQuery() {
   }
   
   // Validation: get question
-  const question = questionTextarea.value.trim();
+  let question = questionTextarea.value.trim();
   if (!question) {
     showError('Please enter a question');
     return;
   }
-  
+
   // Show loading state
   showLoading();
   
@@ -423,6 +317,13 @@ async function sendQuery() {
     const data = await response.json();
     
     if (data.results && Array.isArray(data.results)) {
+      // Check for API errors in results
+      const apiErrors = data.results.filter(r => r.error && r.error.includes('Invalid API key'));
+      if (apiErrors.length > 0) {
+        showError('Invalid API key. Please check your API key and try again.');
+        hideLoading();
+        return;
+      }
       renderResults(data.results);
     } else {
       showError('Invalid response from server');
@@ -441,29 +342,30 @@ async function sendQuery() {
   }
 }
 
-// Render results to the results grid
+/**
+ * Render results to the results grid
+ * Swaps out the entire grid and header section
+ */
 function renderResults(results) {
   if (!resultsGrid) return;
   
   const resultsTitle = document.getElementById('results-title');
   const resultsHeader = document.getElementById('results-header');
+  const resultsSection = document.getElementById('results');
   
   if (!resultsHeader || !resultsTitle) {
     return;
   }
   
-  // Show title and header when results are present
-  if (results.length > 0) {
-    resultsTitle.classList.remove('hidden');
-    resultsHeader.classList.remove('hidden');
-    resultsGrid.removeAttribute('hidden');
-    resultsHeader.parentElement.classList.remove('hidden');
-  } else {
-    resultsTitle.classList.add('hidden');
-    resultsHeader.classList.add('hidden');
-    resultsGrid.setAttribute('hidden', '');
-    resultsHeader.parentElement.classList.add('hidden');
+  // Show results section, header and grid (ensure they're all visible)
+  if (resultsSection) {
+    resultsSection.classList.remove('hidden');
   }
+  if (resultsHeader && resultsTitle) {
+    resultsHeader.hidden = false;
+    resultsTitle.hidden = false;
+  }
+  resultsGrid.hidden = false;
   
   // Clear grid before rendering new results
   resultsGrid.innerHTML = '';
@@ -490,9 +392,13 @@ function renderResults(results) {
     } else {
       // Remove leading/trailing newlines from response
       const cleanedResponse = result.response.replace(/^\s+|\s+$/g, '');
+      
+      // Use marked to render markdown
+      const markdownHtml = marked.parse(cleanedResponse);
+      
       contentHtml = `
         <div class="result-response">
-          <div class="result-text">${escapeHtml(cleanedResponse)}</div>
+          <div class="result-text markdown-content">${markdownHtml}</div>
         </div>
       `;
     }
@@ -519,6 +425,97 @@ function renderResults(results) {
     resultsGrid.appendChild(card);
   });
 }
+
+/**
+ * Initialize event listeners
+ */
+function initEventListeners() {
+  // Save API key button
+  saveApiKeyBtn.addEventListener('click', () => {
+    const apiKey = apiKeyInput.value.trim();
+    if (!apiKey) {
+      showError('Please enter a valid API key.');
+      return;
+    }
+    
+    hideError();
+    saveApiKey(apiKey);
+    // Don't reload models - keep existing selection
+  });
+  
+  // Allow Enter key in API key input
+  apiKeyInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      const apiKey = apiKeyInput.value.trim();
+      if (apiKey) {
+        saveApiKey(apiKey);
+        const models = fetchModels(apiKey);
+        const modeFilter = modelTypeSelect.value;
+        renderModels(models, modeFilter);
+      }
+    }
+  });
+  
+  // Model filter dropdown
+  modelTypeSelect.addEventListener('change', () => {
+    const apiKey = loadApiKey();
+    if (apiKey) {
+      const models = fetchModels(apiKey);
+      const modeFilter = modelTypeSelect.value;
+      renderModels(models, modeFilter);
+    }
+  });
+  
+  // Question textarea - handle Ctrl+Enter to send
+  if (questionTextarea) {
+    questionTextarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.ctrlKey) {
+        sendQuery();
+      }
+    });
+  }
+  
+  // Send button
+  if (sendButton) {
+    sendButton.addEventListener('click', sendQuery);
+  }
+}
+
+/**
+ * Initialize app on page load
+ */
+async function init() {
+  initEventListeners();
+  
+  // Always load models on startup (endpoint is public)
+  try {
+    const models = await fetchModels(); // No API key required
+    const modeFilter = modelTypeSelect.value;
+    // Ensure models is an array
+    if (models && Array.isArray(models)) {
+      renderModels(models, modeFilter);
+    } else {
+      console.error('Invalid models data received:', models);
+    }
+  } catch (error) {
+    console.error('Failed to load models:', error);
+  }
+  
+  // Load API key from localStorage if available
+  const savedApiKey = loadApiKey();
+  
+  if (savedApiKey) {
+    apiKeyInput.value = savedApiKey;
+  }
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', init);
+} else {
+  init();
+}
+
 // Export functions for testing (if needed)
 export {
   fetchModels,

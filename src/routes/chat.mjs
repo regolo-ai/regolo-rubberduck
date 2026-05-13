@@ -1,5 +1,6 @@
 import express from 'express';
 import { getUserFriendlyError } from '../errors.mjs';
+import { processUrlsInText, extractUrls } from '../urlProcessor.mjs';
 
 const router = express.Router();
 
@@ -39,16 +40,37 @@ router.post('/chat', async (req, res) => {
     return res.status(400).json({ error: 'messages must be a non-empty array' });
   }
 
-  // Sanitize messages - strip HTML from user content for security and trim leading/trailing whitespace
-  const sanitizedMessages = messages.map(msg => {
+  // Check for URLs in the last user message and process them
+  let urlsFound = [];
+  let urlsProcessed = 0;
+  
+  const sanitizedMessages = await Promise.all(messages.map(async msg => {
     if (!msg.role || !msg.content) {
       throw new Error('Invalid message format: each message must have role and content');
     }
+    
+    // Only process URLs in user messages
+    if (msg.role === 'user') {
+      const { processedText, urlsFound: found, urlsProcessed: processed } = await processUrlsInText(msg.content);
+      urlsFound = found;
+      urlsProcessed = processed;
+      
+      return {
+        role: msg.role,
+        content: stripHtml(processedText.trim())
+      };
+    }
+    
     return {
       role: msg.role,
       content: stripHtml(msg.content.trim())
     };
-  });
+  }));
+
+  // If URLs were found, include this info in response via a custom header (for UI feedback)
+  if (urlsProcessed > 0) {
+    res.set('X-URLs-Processed', String(urlsProcessed));
+  }
 
   // Build request for each model
   const queryModel = async (model) => {

@@ -689,3 +689,27 @@ body {
 .result-text::-webkit-scrollbar-thumb:hover {
   background: var(--accent);
 }
+
+/* URL Indicator */
+.url-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  background-color: rgba(5, 223, 114, 0.1);
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.url-indicator .url-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.url-indicator .url-text {
+  line-height: 1.4;
+}
+
