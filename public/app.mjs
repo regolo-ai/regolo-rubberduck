@@ -3,8 +3,6 @@
  * Handles API key persistence, model fetching, filtering, and selection
  */
 
-import { marked } from 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
-
 // DOM Elements
 const apiKeyInput = document.getElementById('api-key');
 const saveApiKeyBtn = document.getElementById('save-api-key');
@@ -228,6 +226,65 @@ function escapeHtml(text) {
 }
 
 /**
+ * Convert markdown to HTML
+ * Simple implementation for basic markdown formatting
+ * @param {string} markdown - Markdown text to convert
+ * @returns {string} - HTML string
+ */
+function markdownToHtml(markdown) {
+  let html = markdown;
+  
+  // Code blocks (``` ... ```)
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  
+  // Inline code (`code`)
+  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+  
+  // Headings (# through ######)
+  html = html.replace(/^###### (.+)$/gm, '<h6>$1</h6>');
+  html = html.replace(/^##### (.+)$/gm, '<h5>$1</h5>');
+  html = html.replace(/^#### (.+)$/gm, '<h4>$1</h4>');
+  html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+  
+  // Bold (**text** or __text__)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+  
+  // Italic (*text* or _text_)
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+  
+  // Links [text](url)
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  
+  // Images ![alt](url)
+  html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+  
+  // Unordered lists (- or * )
+  html = html.replace(/^[*\-] (.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+  
+  // Ordered lists (1. 2. 3. )
+  html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+  // (Already handled by ul pattern above)
+  
+  // Blockquotes (> )
+  html = html.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
+  
+  // Horizontal rule
+  html = html.replace(/^---$/gm, '<hr>');
+  
+  // Paragraphs - wrap double newlines
+  html = html.split('\n\n').map(block => {
+    return block.replace(/^/gm, '').replace(/<h[1-6]|<pre|<ul|<ol|<blockquote|<hr/ig, '\n$&').replace(/<\/h[1-6]|<\/pre|<\/ul|<\/ol|<\/blockquote|<\/hr/ig, '$&\n');
+  }).join('<p>');
+  
+  return html;
+}
+
+/**
  * Show loading indicator and disable send button
  */
 function showLoading() {
@@ -393,8 +450,8 @@ function renderResults(results) {
       // Remove leading/trailing newlines from response
       const cleanedResponse = result.response.replace(/^\s+|\s+$/g, '');
       
-      // Use marked to render markdown
-      const markdownHtml = marked.parse(cleanedResponse);
+      // Convert markdown to HTML
+      const markdownHtml = markdownToHtml(cleanedResponse);
       
       contentHtml = `
         <div class="result-response">
