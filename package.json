@@ -9,9 +9,13 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "dev": "node --watch server.mjs"
+    "dev": "node --watch server.mjs",
+    "build:css": "npx @tailwindcss/cli -i ./src/input.css -o ./public/style.css --minify",
+    "watch:css": "npx @tailwindcss/cli -i ./src/input.css -o ./public/style.css --watch"
   },
   "devDependencies": {
-    "playwright": "^1.59.1"
+    "playwright": "^1.59.1",
+    "tailwindcss": "^4.1.0",
+    "@tailwindcss/cli": "^4.1.0"
   }
 }
