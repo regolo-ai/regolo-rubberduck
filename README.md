@@ -34,6 +34,9 @@ cd regolo-rubberduck
 # Install dependencies
 npm install
 
+# Compile the CSS
+npm run build:css
+
 # Start the server
 npm start
 ```
@@ -61,6 +64,9 @@ For development with hot-reloading (if you need to modify code).
 ```bash
 # Install dependencies
 npm install
+
+# Compile the CSS
+npm run build:css
 
 # Start in development mode
 npm run dev
