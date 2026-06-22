@@ -105,6 +105,10 @@ router.post("/chat", async (req, res) => {
           model,
           messages: sanitizedMessages,
           stream: false,
+          reasoning_effort: "medium",
+          extra_body: {
+            reasoning_split: true,
+          },
         }),
         signal: controller.signal,
       });
@@ -334,6 +338,10 @@ router.post("/chat/stream", async (req, res) => {
           messages: sanitizedMessages,
           stream: true,
           stream_options: { include_usage: true },
+          reasoning_effort: "medium",
+          extra_body: {
+            reasoning_split: true,
+          },
         }),
         signal: controller.signal,
       });
