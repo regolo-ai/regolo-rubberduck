@@ -242,7 +242,7 @@ router.post("/chat", async (req, res) => {
  * - done:      {}
  */
 router.post("/chat/stream", async (req, res) => {
-  const { apiKey, models, messages, maxTokens } = req.body;
+  const { apiKey, models, messages, maxTokens, model_costs } = req.body;
 
   // Validation: apiKey required
   if (!apiKey || typeof apiKey !== "string") {
@@ -404,6 +404,7 @@ router.post("/chat/stream", async (req, res) => {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let sseBuffer = "";
+      let lastUsage = null; // Track last usage data from stream
 
       while (true) {
         const { done, value } = await reader.read();
@@ -445,6 +446,7 @@ router.post("/chat/stream", async (req, res) => {
 
             // Extract usage from final chunk
             if (parsed.usage) {
+              lastUsage = parsed.usage; // Store last usage
               const totalDurationMs = Date.now() - startTime;
               const usageData = {
                 model,
@@ -471,6 +473,28 @@ router.post("/chat/stream", async (req, res) => {
           }
         }
       }
+
+      // Always send usage event to finalize the card
+      const totalDurationMs = Date.now() - startTime;
+      const usageData = {
+        model,
+        tokens: {
+          prompt: lastUsage?.prompt_tokens || 0,
+          completion: lastUsage?.completion_tokens || 0,
+          total: lastUsage?.total_tokens || 0,
+        },
+        duration_ms: totalDurationMs,
+        ttft: firstChunkTime || totalDurationMs,
+      };
+
+      // Calculate cost if model_costs provided and we have actual token usage
+      if (model_costs && model_costs[model] && (usageData.tokens.prompt > 0 || usageData.tokens.completion > 0)) {
+        const modelCost = model_costs[model];
+        usageData.cost = (usageData.tokens.prompt * modelCost.input_cost_per_token) +
+                         (usageData.tokens.completion * modelCost.output_cost_per_token);
+      }
+
+      sseSend("usage", usageData);
 
       clearTimeout(timeoutId);
     } catch (err) {

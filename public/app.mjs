@@ -498,8 +498,9 @@ function appendStreamChunk(model, content) {
  * @param {{prompt: number, completion: number, total: number}} tokens - Token usage
  * @param {number} durationMs - Total duration in ms
  * @param {number} ttft - Time to first token in ms
+ * @param {number|null} cost - Cost in EUR
  */
-function finalizeStreamCard(model, tokens, durationMs, ttft) {
+function finalizeStreamCard(model, tokens, durationMs, ttft, cost = null) {
   const card = streamingCards[model];
   if (!card) return;
 
@@ -518,6 +519,10 @@ function finalizeStreamCard(model, tokens, durationMs, ttft) {
   const totalTime = (durationMs / 1000).toFixed(2);
   const ttftStr = ttft ? `${ttft}ms` : "";
   const costStr = cost !== null ? `€${cost.toFixed(6)}` : "";
+
+  // Update status label to "Done"
+  const statusLabel = card.footerEl.querySelector(".status-label");
+  if (statusLabel) statusLabel.textContent = "Done";
 
   card.footerEl.innerHTML = `
     <span class="text-xs text-slate-400">Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}${costStr ? ` | Cost: ${costStr}` : ""}</span>
@@ -678,6 +683,7 @@ async function sendQuery() {
                 data.tokens,
                 data.duration_ms,
                 data.ttft,
+                data.cost || null,
               );
               break;
             case "error":
