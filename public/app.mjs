@@ -22,6 +22,7 @@ const rateLimitDiv = document.getElementById("rate-limit");
 // Streaming state
 let streamingCards = {}; // model -> { element, markdownEl, footerEl, fullText }
 let currentAbortController = null;
+let modelCosts = {}; // model id -> { input_cost_per_token, output_cost_per_token }
 
 /**
  * Show error message in error container
@@ -106,7 +107,20 @@ async function fetchModels(apiKey) {
   }
 
   const data = await response.json();
-  return data.models || [];
+  const models = data.models || [];
+  
+  // Store costs for each model
+  modelCosts = {};
+  models.forEach(m => {
+    if (m.id) {
+      modelCosts[m.id] = {
+        input_cost_per_token: m.input_cost_per_token || 0,
+        output_cost_per_token: m.output_cost_per_token || 0
+      };
+    }
+  });
+  
+  return models;
 }
 
 /**
@@ -503,9 +517,10 @@ function finalizeStreamCard(model, tokens, durationMs, ttft) {
   const totalTokens = tokens.total || 0;
   const totalTime = (durationMs / 1000).toFixed(2);
   const ttftStr = ttft ? `${ttft}ms` : "";
+  const costStr = cost !== null ? `€${cost.toFixed(6)}` : "";
 
   card.footerEl.innerHTML = `
-    <span class="text-xs text-slate-400">Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}</span>
+    <span class="text-xs text-slate-400">Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}${costStr ? ` | Cost: ${costStr}` : ""}</span>
     <span class="text-xs text-slate-400">Duration: ${totalTime}s ${ttftStr ? "| TTFT: " + ttftStr : ""}</span>
   `;
 }
@@ -563,23 +578,32 @@ async function sendQuery() {
   showLoading();
 
   try {
-    const response = await fetch("/api/chat/stream", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        apiKey,
-        models: selectedModels,
-        messages: [
-          {
-            role: "user",
-            content: question,
-          },
-        ],
-      }),
-      signal: myController.signal,
-    });
+      // Build model_costs object for selected models
+      const selectedModelCosts = {};
+      selectedModels.forEach(modelId => {
+        if (modelCosts[modelId]) {
+          selectedModelCosts[modelId] = modelCosts[modelId];
+        }
+      });
+
+      const response = await fetch("/api/chat/stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          apiKey,
+          models: selectedModels,
+          messages: [
+            {
+              role: "user",
+              content: question,
+            },
+          ],
+          model_costs: selectedModelCosts,
+        }),
+        signal: myController.signal,
+      });
 
     updateRateLimitDisplay(response);
 
@@ -761,12 +785,14 @@ function renderResults(results) {
     const promptTokens = tokens.prompt || 0;
     const completionTokens = tokens.completion || 0;
     const totalTokens = tokens.total || 0;
+    const cost = result.cost;
+    const costStr = cost !== null ? `€${cost.toFixed(6)}` : "";
 
     card.innerHTML = `
       <h3 class="text-base font-semibold text-green-400 mb-3">${modelName}</h3>
       ${contentHtml}
       <div class="flex flex-col sm:flex-row justify-between gap-2 pt-3 border-t border-slate-800/80">
-        <span class="text-xs text-slate-400">Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}</span>
+        <span class="text-xs text-slate-400">Prompt: ${promptTokens} | Completion: ${completionTokens} | Total: ${totalTokens}${costStr ? ` | Cost: ${costStr}` : ""}</span>
         <span class="text-xs text-slate-400">Duration: ${totalTime}s ${firstTokenTime ? `| TTFT: ${firstTokenTime}` : ""}</span>
       </div>
     `;

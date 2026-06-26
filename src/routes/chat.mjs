@@ -24,7 +24,7 @@ function stripHtml(str) {
  * Response: {results: [{model, response, time_to_first_token, tokens: {prompt, completion, total}, duration_ms, error}]}
  */
 router.post("/chat", async (req, res) => {
-  const { apiKey, models, messages, maxTokens } = req.body;
+  const { apiKey, models, messages, maxTokens, model_costs } = req.body;
 
   // Validation: apiKey required
   if (!apiKey || typeof apiKey !== "string") {
@@ -160,15 +160,26 @@ router.post("/chat", async (req, res) => {
 
       const data = await response.json();
 
+      const tokens = {
+        prompt: data.usage?.prompt_tokens || 0,
+        completion: data.usage?.completion_tokens || 0,
+        total: data.usage?.total_tokens || 0,
+      };
+
+      // Calculate cost if model_costs provided
+      let cost = null;
+      if (model_costs && model_costs[model]) {
+        const modelCost = model_costs[model];
+        cost = (tokens.prompt * modelCost.input_cost_per_token) +
+               (tokens.completion * modelCost.output_cost_per_token);
+      }
+
       return {
         model,
         response: data.choices?.[0]?.message?.content || "",
         time_to_first_token: 100 + Math.floor(durationMs * 0.1),
-        tokens: {
-          prompt: data.usage?.prompt_tokens || 0,
-          completion: data.usage?.completion_tokens || 0,
-          total: data.usage?.total_tokens || 0,
-        },
+        tokens,
+        cost,
         duration_ms: durationMs,
         error: null,
       };
@@ -435,7 +446,7 @@ router.post("/chat/stream", async (req, res) => {
             // Extract usage from final chunk
             if (parsed.usage) {
               const totalDurationMs = Date.now() - startTime;
-              sseSend("usage", {
+              const usageData = {
                 model,
                 tokens: {
                   prompt: parsed.usage.prompt_tokens || 0,
@@ -444,7 +455,16 @@ router.post("/chat/stream", async (req, res) => {
                 },
                 duration_ms: totalDurationMs,
                 ttft: firstChunkTime || totalDurationMs,
-              });
+              };
+
+              // Calculate cost if model_costs provided
+              if (model_costs && model_costs[model]) {
+                const modelCost = model_costs[model];
+                usageData.cost = (usageData.tokens.prompt * modelCost.input_cost_per_token) +
+                                 (usageData.tokens.completion * modelCost.output_cost_per_token);
+              }
+
+              sseSend("usage", usageData);
             }
           } catch (e) {
             // Skip unparseable lines

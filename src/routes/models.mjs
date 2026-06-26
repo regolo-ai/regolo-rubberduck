@@ -44,7 +44,9 @@ export async function getModelsHandler(req, res) {
       ? rawModels.map(m => ({
           id: m.model_group || m.id || m.name,
           name: m.model_group || m.name || m.id,
-          mode: m.mode || 'chat'
+          mode: m.mode || 'chat',
+          input_cost_per_token: m.input_cost_per_token || 0,
+          output_cost_per_token: m.output_cost_per_token || 0
         }))
       : [];
 
